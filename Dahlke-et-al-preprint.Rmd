@@ -1,0 +1,510 @@
+---
+title: "Quantifying the Systematic Bias in the Accessibility and Inaccessibility of Web Scraping Content from URL-Logged Web-Browsing Digital Trace Data"
+author: 
+- Ross Dahlke ^1,2^
+- Deepak Kumar ^1,3^
+- Zakir Durumeric ^1,3^
+- Jeffrey T. Hancock ^1,2^
+date: \scriptsize^1^ Stanford University ^2^ Department of Communication ^3^ Department of Computer Science
+#date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: 
+  pdf_document: default
+header-includes:
+    - \usepackage{setspace}\doublespacing
+indent: true
+bibliography: bibliography.bib
+csl: apa.csl
+biblio-style: apa
+code_folding: hide
+abstract: "Social scientists and computer scientists are increasingly using observational digital trace data and analyzing these data post hoc to understand the content people are exposed to online. However, these content collection efforts may be systematically biased when the entirety of the data cannot be captured retroactively. We call this often unstated assumption the problematic assumption of persistence. To examine the extent to which this assumption may be problematic, we identify 107k hard news and misinformation web pages visited by a representative panel of 1,238 American adults and record the degree to which the web pages individuals visited were accessible via successful web crawls or inaccessible via unsuccessful crawls. While we find that the URLs collected are largely accessible and with unrestricted content, we find there are systematic biases in which URLs are restricted, return an error, or are inaccessible. For example, conservative misinformation URLs are more likely to be inaccessible than other types of misinformation. We suggest how social scientists should capture and report digital trace and web scraping data. "
+---
+
+```{r include = F}
+library(tidyverse)
+```
+
+# Introduction
+
+Social science researchers are increasingly turning to observational web-tracking and digital trace data to understand patterns of exposure and effects of digital content. However, most social scientists do not collect digital trace data in real-time but instead retroactively try to access them, often through an API [Application Programming Interface, @junger2021brief; @praet2022s], data vendor [e.g., @lyons2022we], or scraping the content of web pages [@freelon2018computational]. In the present work, we focus on this post hoc scraping of the content of web pages, a common practice among researchers [e.g., @ben2016does; @guess2021almost; @guess2021consequences; @li2021trails; @reiss2022dissecting; @wojcieszak2021no]. However, these post-facto content collection efforts may be systematically biased by the inability to capture the content of many of these websites after the fact. For example, a website may have been deleted or behind a paywall. 
+
+In this paper, we seek to quantify the systematic bias that may result from scraping web page content from web log data. Specifically, we are concerned that some websites individuals consume may be more difficult to collect content from than others. To examine this bias, we leverage a dataset of misinformation and hard news websites visited by a panel of 1,238 American adults over three months. We scraped each hard news and misinformation URL a participant visited via a fully-fledged web browser (e.g., Google Chrome) to capture the content loaded on the page. 
+
+In our paper, we make three core contributions: First, we categorize the output of web crawls into two main categories: accessible data in which the crawl is successful and inaccessible data in which the crawl is unsuccessful. We then further subcategorize accessible data from successful crawls into unrestricted content, restricted content, or errors. Second, we investigate systematic differences in the distribution of content in these categories and show discrepancies related to the ideology of the source. Third, we provide recommendations for future researchers on how to collect web scraping data and call for adopting a standardized set of reporting metrics and a reporting format that researchers using web scraping can take to standardize reporting of potential systematic biases in their data.
+
+The proliferation of digital trace data [@baumgartner2022novel; @choi2020digital; @jungherr2017digital; @kreuter2020collecting; @revilla2017using] has led to a “Big Data” revolution [@chen2020big; @christ2021big; @eck2021big; @gil2017citizenship; @wells2017combining]. Today, social scientists can explore new questions in human behavior that were difficult or impossible to study in the past. For example,  recent research has examined the relationship between political interest and the actual sharing of political information on social media [@haenschen2020self], gendered differences in civic engagement [@brandtzaeg2017facebook], digital behaviors and vote choice [@bach2021predicting], and observed digital news consumption [@moller2020explaining]. 
+
+These data are collected post hoc and, therefore, can be studied because they are successfully accessed after the fact. However, most past work does not consider that there may be systematic biases in the data stemming from inaccessible data. Furthermore, even if data are accessible in a technical sense, they may be of limited usefulness if the content is restricted or returns errors. We call the reliance on digital trace data in computational social science the *problematic assumption of accessibility*. This assumption is often unstated but assumes that the digital traces available to a researcher are representative and complete. We argue that while a great deal of digital trace data are accessible and reasonably captures social behavior or experiences, some digital trace data are inaccessible or unusable to answer social scientific questions. Below we lay out these forms of trace data that may undermine assumptions that trace data are representative and complete. We connect these data types to social scientific ideas of persistent and ephemeral communication.
+
+# Background on the Web
+
+This paper uses web behavior data collected from a representative panel of 1,238 American adults. To provide more clarity, we detail the necessary background on how web behavior is defined in this section.
+
+## Understanding Web Requests
+
+In order to access a website, a web client (e.g., a web browser) must issue a *web request* for the contents of that website from a remote server. Requests are sent using the Hypertext Transfer Protocol (HTTP), a stateless protocol designed for web clients and servers to communicate with one another when delivering content easily. A web request contains several important pieces of information: the URL of the remote server, headers (which can contain information about the client itself or state set onto the browser), and a body, which contains data to send to the web server. In this paper, we log all web requests made by our representative panel.
+
+## Understanding Web Responses
+
+When a web server responds to a web request, it does so by sending back a web response. Responses are also sent via HTTP and chiefly contain the requested content (e.g., the data for a web page) and a *status code*, which ranges from 100 – 599, describing how the web server handled the request. For example, a returned status code of 200 indicates the web server handled the request correctly and with no errors, whereas a status code of 404 indicates that the web server could not find the page embedded in the web request. In our paper, we leverage status codes >= 400 to identify if a web server encountered an error when processing our requests.
+
+# Literature Review
+
+## Accessible Data
+
+From a technical perspective, accessible data can be accessed or retrieved through normal means, such as crawling a website. Early internet scholars documented the extent to which web pages were accessible or not. For example, early estimates found that websites are generally accessible, with about 83.8% of web pages accessible [@koehler1999analysis]. This line of inquiry has also been extended to academic publications. "Citation rot" or "link rot" is when digital academic article reference material becomes unretrievable [@tyler2003librarians] and potentially disrupts scholarly progress because scholars cannot find relevant reference material. This concern continues today [e.g., @klein2014scholarly; @d2015urls; @perkel2015trouble] and is shared across disciplines, for example, in communication [e.g., @dimitrova2007half; @spence2020retrieving] and political science [e.g., @gertler2017reference]. Accessibility is important to scholars because it allows for the recreation and revisiting of the original content that scholars desire to study.
+
+These technical ideas are closely related to the social scientific principle of persistence. In the field of communication, persistent communication is permanent, static, and atemporal [@linell2004written, p. 8]. Often, this idea is used to consider the conceptual differences between forms of communication, such as books and spoken language. Books, as long as they are properly maintained, remain persistent. 
+
+## Accessible-but-Restricted Data
+
+Just because data are accessible from a technical perspective does not mean they are necessarily usable for answering specific social scientific questions. One may crawl a website without an error, but the desired content may be restricted. For example, paywall journalism creates restricted communication without the proper credentials. Paywalls are barriers between internet users and online content from news organizations [@pickard2014salvation]. The news publishing industry quickly adopted [@franklin2014future] this “retro-innovation” [@arrese2016gratis] in an effort to find new revenue streams [@pavlik2013innovation; @sjovaag2016introducing] with mixed success [@myllylahti2014newspaper]. Journalistic stories behind paywalls continue to exist and are visitable, so they are not inaccessible in a technical sense. However, one must possess proper credentials to access the content–not just anyone can visit the content in the first place. In other words, this content is inaccessible. 
+
+These accessible-yet-restricted data are often under-considered. News organizations do not randomly construct paywalls; thus, content is not randomly inaccessible to people, including researchers. For example, even on the same website, hard news and opinion pieces are more likely to be behind paywalls than other web pages [@myllylahti2017content]--the sort of content most likely to be of interest to scholars. In addition, news organizations will occasionally temporarily drop their paywall for public emergencies, planned special events, and broader access for civically valuable content [@ananny2016drop]. 
+
+Of course, restricted data are not new. For example, one may have had to pay for print newspapers. What is new, however, is how researchers are attempting to access the data. While researchers in the past may have accessed the totality of news that appeared in The New York Times via a first- or third-party archive, researchers are increasingly collecting their own data, often through web scraping [@krotov2018legality; @landers2016primer; @olmedilla2016harvesting]. Thus, inaccessible data pose additional problems for researchers above and beyond ephemerality because scholars must also consider how to access the content in addition to simply recording their existence. For example, internet scholars may record a webpage snapshot before the page gets taken down and becomes restricted. Researchers must also decide how to get past the restrictions that may otherwise render a web page’s contents unusable for the social science question they are asking.
+
+## Inaccessible Data
+
+Technically, inaccessible data cannot be accessed or retrieved through normal means. In the computer science security community, significant prior work has studied the ways in which adversarial actors cloak or hide malicious activity using Fast Flux Domains [@holz2008measuring]. These ephemeral domains are brought online for a short time, typically to conduct some kind of internet abuse (e.g., distributed denial-of-service attacks or DDoS), and quickly taken offline to avoid discovery. Studying the structure of these domains is key to understanding how botnets propagate [@stone2009your; @bilge2011exposure] and can inform defenses against abusive Internet behaviors [@perdisci2018method].
+
+The technical categorization of some web data as inaccessible is similar to the social scientific idea of ephemerality [e.g., @clark1996using; @linell2004written]. In contrast to “atemporal” persistent communication, ephemeral communication is fleeting and ceases to exist; it is “distributed in time” [@linell2004written, p. 5]. For example, spoken word, if unrecorded, leaves no tangible evidence of its prior existence and contents. Modern media technology complicates the relationship between persistence and ephemerality. Instagram stories [@bainotti2021archive; @carah2016brands; @vazquez2019ephemeral] and Snapchat [@bayer2016sharing; @cavalcanti2017media; @chowdhury2021ceam; @mcroberts2019behind; @villaespesa2020ephemeral] are two prominent contemporary media platforms that feature ephemeral content. These platforms are designed to disappear after a specific amount of time, generally 24 hours. Given the fleeting nature of these communications, these ephemeral media model the oral paradigm of communication and storytelling [@soffer2016oral], but they introduce a new dynamic of easy capture where they are designed to be ephemeral but can be captured, for example, through screenshots on personal devices.
+
+The distinction between accessible-yet-restricted and inaccessible data is important because the implications for researchers and their analysis are unequal. While both data types may be missing from previous analyses, how researchers can access and use these types differ significantly. Accessible-yet-restricted data pose additional challenges for researchers, as they must identify the existence of restricted content and find ways to gain access to it. In other words, accessible-yet-restricted data may appear, at first glance, to be the normal content that one desires to study when actually, additional precautions are needed to avoid it tainting an analysis. On the other hand, inaccessible data cannot be retrieved through normal means, making it potentially impossible for researchers to access and use the data without special methods or tools, such as a historical archive. Therefore, understanding the distinction between these two categories is crucial for researchers to determine the feasibility of answering specific social scientific questions and to develop appropriate research methods and strategies. 
+
+## Accessibility, Inaccessibility, and the Study of Misinformation
+
+In the present paper, we examine accessibility and inaccessibility in the context of misinformation. The study of misinformation on the internet has become an important area of research that relies on digital trace data. Many studies examine how often and in what ways people are exposed to misinformation online [@dahlke2022mixed; @guess2020exposure; @moore2022exposure] and to what effect [@dahlke2022effect]. One concern in misinformation research is that it has not accounted for ephemeral and inaccessible web-based misinformation. Many popular misinformation studies leverage lists of curated misinformation websites, but these websites are often unavailable or offline by the time studies are conducted [@han2022infrastructure; @hanley2022no; @hounsel2020identifying]. Internet measurement studies on misinformation often have to discard up to 50% of domains in these human-curated lists, highlighting a possibility for significant bias in collected results. For example, past research [@hounsel2020identifying] found that in a curated set of 758 disinformation websites, 575 (76%) were no longer available and had to be manually reconstructed using historical snapshots. While it is clear that persistence is a problematic assumption, we do not know to what extent this is an issue, nor do we know whether inaccessibility and unusability are systematic in the actual web pages that people visit.
+
+## Quantifying Accessibility and Inaccessibility on the Internet
+
+Quantifying the accessibility of digital trace data is vital to social scientists studying human behavior on the internet because this content may not be randomly accessible or inaccessible. If the distribution is random, there would be less concern. However, a biased distribution would skew findings from internet researchers towards only the information they could collect. This bias is even likely given the examples above of Fast Flux Domain Networks and Paywall Journalism. Linguistics already grapples with this systematic concern by acknowledging a bias toward studying written, persistent language over spoken, ephemeral communication [@linell2004written]. We seek to examine these potential sources of error for scholars studying content exposure on the internet and document the extent of these possible biases. We consider this bias on two of the most common objects of study on the internet: exposure to hard news and misinformation websites.
+
+Specifically, we ask two research questions:
+
+**RQ1**: To what extent are hard news and misinformation website visits accessible and inaccessible? Of accessible data, to what extent is the content returned unrestricted, restricted, or an error?
+
+**RQ2**: Are there systematic biases in the websites and types of websites that are accessible and inaccessible with respect to ideology?
+
+# Data, Measures, and Methods
+
+## Data
+
+The data for this project come from a two-wave online survey administered via YouGov during the 2020 election to 1,515 American adults. We passively gathered web browsing data (i.e., URLs) from those participants using YouGov’s Pulse browser plugin from August 24, 2020, to December 7, 2020. In total, we collected approximately 21M web visits from these participants. All participants consented to the terms of the research, and YouGov compensated the participants. 
+
+## Measures
+
+We narrowed our list of 21 million visited URLs to websites that are hard news, as defined by Baksy et al. [-@bakshy2015exposure] and NewsGuard^[newsguardtech.com], and misinformation websites, as categorized by Moore et al. [-@moore2022exposure]. We assigned ideological labels to websites using NewsGuard’s rating and classifications from Baksy et al. [-@bakshy2015exposure]. In addition, we only examined URLs that were to content webpages, i.e., we removed URL visits to pages such as home pages that are not specific pieces of content in an attempt not to consider dynamic web pages and removed the query parameters (i.e., site-specific data embedded in the URL) from the URLs. Some commonly visited domains that are were generally home pages, contained mostly sports content, or were labeled as partisan but ostensibly are not (e.g., websites that report the weather), were not included in the calculations^[These sites included: msn.com, news.yahoo.com, en.wikipedia.org, finance.yahoo.com, sports.yahoo.com, m.youtube.com, profootballtalk.nbcsports.com, bleacherreport.com, theringer.com, espn.com, weather.com, accuweather.com, vimeo.com, soccer.nbcsports.com, whitehouse.gov]. These steps left us with 106,685 unique URLs. 
+
+## Method
+
+One year after collecting the URL logs, we visited each URL using a headless Google Chrome web browser one year after collecting URL logs. We did this to most closely simulate the real-world browsing experience of end-users using an Internet browser. In some cases, the browser crashed when visiting the URL. This crash can happen for several reasons, ranging from poorly administered web servers to missing DNS entries. If the browser crashed when visiting a URL, we denoted that crawl as unsuccessful. If the browser was able to retrieve some page content, we denoted that crawl as successful. One potential limitation of this approach, that future scholars using web-browsing data should consider, is that it does not consider personalized content. Future work should develop a method to capture this personalized content in real-time. 
+In investigating the successfully retrieved web content, we noticed that many successful crawls either returned an HTTP Error (i.e., the status code was >= 400) or were behind a paywall. To better characterize this, we subcategorized each successful crawl into three buckets: restricted content, unrestricted content, and errors. We define each below:
+
+1. Error content is web content where the web server returns an HTTP status code greater than 400.
+
+2. Restricted content sits behind a paywall, login page, or some other error message on the web page itself.
+
+3. Unrestricted content is any content that is not restricted or returns an error.
+
+We identify error content simply by observing the HTTP status code returned for each URL we requested. To identify restricted content, we built a simple machine-learning classifier that could discern between content that sits behind a paywall and non-paywalled content (for more details, see Supplemental Materials A). For our training data, two members of the research team hand-coded a random subset of 9,636 webpages (IRR, Cohen’s Kappa = .85) for whether the page contained a message restricting access (e.g., “This page is not available right now.”) We then leveraged this hand-coded dataset to fine-tune a publicly available Huggingface BERT classifier to identify restricted content. Of the 9,636 hand-coded web pages, we used 7,724 for the training set, 1,405 for the test set, and 507 for the validation set. 
+
+The model achieved an F1 score of 0.92 on the validation set. After applying this model to the entire set,  we categorized 97,395 (91.3%) as successfully crawled with unrestricted content, 753 (0.7%) as successfully crawled with restricted content, 8,385 (7.9%) as successfully crawled with an error, and 152 (0.1%) as unsuccessfully crawled.
+
+We employ a standard chi-squared test on the distributions of accessibility categories of various websites (e.g., liberal misinformation websites). The top-line results for RQ1 are in Table 1, and the heterogeneous results for RQ2 are in Table 2. We also examined alternative specifications to see if the distributions remain significantly different under different categorical groups, finding that the results are robust to other potential groupings (Supplemental Materials B). 
+
+To investigate how stable our results are over time, we also crawled each web page at two additional time points: once after one-and-a-half years post data collection and once after two full years (see Figure 1). 
+
+
+# Results
+
+To answer RQ1, we quantified the rates of our accessibility categories for hard news and misinformation websites in our data set (Table 1). Most hard news and misinformation web pages were successfully crawled and contained unrestricted content (91.1% of hard news pages and 95.9% of misinformation pages). However, compared to misinformation web pages, hard news sites were almost twice as likely to be successfully crawled but with restricted content and nearly three times as likely to be successfully crawled but returned an error. In contrast, misinformation web pages were nine times more likely to return an unsuccessful crawl than hard news pages. 
+
+Some of these findings are aligned with the conventional wisdom. For example, misinformation websites were more likely to be unsuccessfully crawled and, thus, inaccessible. However, some findings are surprising. One that stands out is that hard news is more likely to be successfully crawled but return an error. Speculatively, this result may be due to active maintenance from hard news publishes. For example, some outlets may be archiving old stories. Future work should more deeply investigate why the source of this result.  
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = FALSE,
+	message = FALSE,
+	warning = FALSE
+)
+options(scipen = 99999)
+library(tidyverse)
+```
+
+```{r}
+url_categories_snapshot_all <- read_csv("data/url_categories_snapshot_all.csv")
+
+url_categories <- url_categories_snapshot_all %>% 
+  filter(snapshot == 1)
+```
+
+
+```{r include = F}
+url_categories %>% 
+  count(eph_type) %>% 
+  mutate(per = n / sum(n))
+```
+
+
+```{r include = F}
+url_categories %>% 
+  count(url_type, eph_type) %>% 
+  group_by(url_type) %>% 
+  mutate(per = n / sum(n))
+```
+
+```{r include = F}
+url_categories %>% 
+  count(url_type, eph_type, name = "x") %>% 
+  xtabs(x~url_type+eph_type, data = .) %>% 
+  chisq.test() 
+```
+
+\begin{center}
+```{r}
+url_categories %>% 
+  count(url_type, eph_type, name = "x") %>% 
+  group_by(url_type) %>% 
+  mutate(n = sum(x),
+         per = scales::percent(x / n, .1)) %>% 
+  select(-x, -n) %>% 
+  pivot_wider(names_from = eph_type, values_from = per) %>% 
+  mutate(url_type = if_else(url_type == "hard_news", "hard news", url_type),
+         url_type = if_else(url_type == "misinfo", "misinformation", url_type)) %>% 
+  select(url_type, `successful - unrestricted`, `successful - restricted`, `successful - error`, `unsuccessful`) %>% 
+  kableExtra::kbl(col.names = c("URL Category", "Successful - Unrestricted", "Successful - Restricted", "Successful - Error", "Unsccessful"),
+               format = "latex", 
+               booktabs = T,
+               caption = "Percentage of Hard News and Misinformation URLs that are in each Category") %>% 
+  kableExtra::footnote(general = "$\\\\chi^2$(3) = 372.3, $p$ < .001", escape = F, threeparttable = T) 
+```
+\end{center}
+
+We also analyzed how these results change over three snapshots taken approximately one year, one-and-a-half years, and two years after data collection (Figure 1). The percentage of web pages from hard news and misinformation successfully crawled with unrestricted content was relatively stable, with hard news slightly decreasing from the first snapshot to the third. However, the percentage of hard news websites successfully crawled but with restricted content triples from the first snapshot to the third. Both hard news and misinformation websites showed a jump in the percentage of web pages that were unsuccessfully crawled from the first to the second snapshot. In the case of hard news, this percentage dropped slightly in the third snapshot. However, the main result of a significantly different distribution remains the case over all the snapshots (see Supplemental Materials B for more details). In addition, we detail the rates at which web pages’ categorizations change across the snapshots in Supplemental Materials C. We discuss the implications of these results below. 
+
+```{r fig.cap="Percentage of URLs in our data set that are are in each category over time. On the x-axis is the snapshot number. On the y-axis is the percentage of the URLs that are in that category. Snapshot #1 was conducted one year after data collection. Snapshot #2 was conducted one-and-a-half years after data collection. Snapshot #3 was conducted two years after data collection.", fig.height = 8, fig.width = 7}
+url_categories_snapshot_all %>% 
+  count(url_type, eph_type, snapshot) %>% 
+  group_by(snapshot, url_type) %>% 
+  mutate(per = n / sum(n),
+         label = ifelse(snapshot == 1, eph_type, NA)) %>% 
+  mutate(eph_type = factor(eph_type, levels = c("successful - unrestricted", "successful - restricted", "successful - error", "unsuccessful")),
+         url_type = case_when(
+           url_type == "misinfo" ~ "misinformation",
+           url_type == "hard_news" ~ "hard news"
+         )) %>% 
+  ggplot(aes(snapshot, per, color = eph_type, label = label)) +
+  geom_point(size = 4) +
+  geom_line(size = 1.5) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  scale_x_continuous(breaks = c(1, 2, 3)) +
+  ggsci::scale_color_npg() +
+  # coord_cartesian(ylim = c(0, 1)) +
+  # ggrepel::geom_label_repel(box.padding = .5) +
+  labs(title = "Accessibility category metrics over time",
+       x = "Snapshot #",
+       y = "percentage") +
+  theme_bw() +
+  theme(legend.position = "none") +
+  facet_wrap(eph_type~url_type, ncol = 2, scales = "free") +
+  expand_limits(y = 0)
+```
+
+For RQ2, which asks about the potential biases in accessibility categories, we find significant differences in conservative versus liberal web pages (Table 2). Liberal hard news web pages are more likely to be successfully crawled but return an error than conservative hard news web pages. However, conservative misinformation web pages, compared to liberal web pages, were more likely to be successfully crawled but returned an error and to be unsuccessfully crawled. In other words, there are systematic biases in the ideological bent of the types of web pages that can be recovered for post hoc analysis.
+
+
+```{r include = F}
+url_categories %>% 
+  #filter(!is.na(ideology)) %>% 
+  count(url_type, eph_type, ideology, name = "x") %>% 
+  filter(url_type == "hard_news") %>% 
+  xtabs(x~ideology+eph_type, data = .) %>% 
+  chisq.test() 
+
+url_categories %>% 
+  #filter(!is.na(ideology)) %>% 
+  count(url_type, eph_type, ideology, name = "x") %>% 
+  filter(url_type == "misinfo") %>% 
+  xtabs(x~ideology+eph_type, data = .) %>% 
+  chisq.test() 
+```
+
+\begin{center}
+
+```{r}
+url_categories %>% 
+  # filter(!is.na(ideology)) %>% 
+  count(url_type, eph_type, ideology, name = "x") %>% 
+  group_by(url_type, ideology) %>% 
+  mutate(n = sum(x),
+         per = scales::percent(x / n, .1)) %>% 
+  select(-x, -n) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = eph_type, values_from = per) %>% 
+    mutate(url_type = if_else(url_type == "hard_news", "hard news", url_type),
+         url_type = if_else(url_type == "misinfo", "misinformation", url_type),
+         `successful - restricted` = replace_na(`successful - restricted`, "0.0%"),
+         `unsuccessful` = replace_na(`unsuccessful`, "0.0%"),
+         ideology = ifelse(is.na(ideology), "other", ideology)) %>% 
+  select(url_type, ideology, `successful - unrestricted`, `successful - restricted`, `successful - error`, `unsuccessful`) %>% 
+  kableExtra::kbl(col.names = c("URL Category", "Ideology", "Successful - Unrestricted", "Successful - Restricted", "Successful - Error", "Unsccessful"),
+               format = "latex", 
+               booktabs = T,
+               caption = "Percentage of Hard News and Misinformation URLs that are in each category") %>% 
+  kableExtra::footnote(general = "Hard news webpages: $\\\\chi^2$(3) = 745.6, $p$ < .001; Misinformation webpages: $\\\\chi^2$(3) = 13.1, $p$ = .005",
+                       escape = F, threeparttable = T) %>% 
+  kableExtra::pack_rows("hard news", 1, 3) %>% 
+  kableExtra::pack_rows("misinformation", 4, 6)
+```
+\end{center}
+
+Specific domains are more likely to have URLs that fall into specific buckets. As seen in Figure 2, some websites almost entirely returned unsuccessful or successful yet restricted content or error messages. For example, over 75% of crawls to *The New York Times*, a liberal hard news website, were successful but returned an error. Or, crawls to theredelephants.com, a conservative misinformation website, were entirely unsuccessful. Said another way, there are hard news and misinformation websites that are systematically difficult for researchers to record the content of, which may bias studies including these websites.
+
+```{r fig.width = 8, fig.height = 6, fig.cap="Graph of the top five hard news and misinformation websites that are ephemeral, inaccessible, and persistent On the x-axis is the percentage of the URLs from the given domain that fall into the category."}
+url_categories %>% 
+  #filter(!is.na(ideology)) %>% 
+  count(domain, url_type, ideology, eph_type, sort = T) %>% 
+  group_by(domain) %>% 
+  mutate(per_site = n / sum(n),
+         ideology = if_else(is.na(ideology), "other", ideology)) %>% 
+  arrange(desc(per_site)) %>% 
+  group_by(url_type, eph_type) %>% 
+  top_n(5, n) %>% 
+  ungroup() %>% 
+  group_by(url_type, eph_type) %>% 
+  mutate(domain = fct_reorder(domain, per_site),
+         eph_type = factor(eph_type, levels = c("successful - unrestricted", "successful - restricted", "successful - error", "unsuccessful"))) %>% 
+  mutate(url_type = if_else(url_type == "hard_news", "Hard News",
+                            if_else(url_type == "misinfo", "Misinformation", url_type))) %>% 
+  ggplot(aes(domain, per_site, color = ideology)) +
+  geom_point() +
+  scale_y_continuous(labels = scales::percent_format()) +
+  scale_color_manual(values = c("darkred", "darkblue", "grey80")) +
+  coord_flip() +
+  labs(title = "Top 5 Hard News and Misinformation Websites",
+       subtitle = "Most in each Category",
+       x = "",
+       y = "% in Category") +
+  facet_wrap(eph_type ~ url_type, scales = "free_y", ncol = 2) + 
+  theme_bw()
+```
+
+## Discussion
+
+The present study examined the accessibility and usability of scraped websites in a nationally representative sample of American adults’ web browsing during the 2020 U.S. Presidential Election. We find that hard news web pages are more likely than misinformation websites to be successfully crawled but with restricted content or errors. However, misinformation web pages were much more likely to be unsuccessfully crawled. Looking at the ideological slant of the web pages, liberal hard news web pages are more likely to be successfully crawled but with an error than conservative hard news web pages. However, conservative misinformation web pages were more likely to be crawled successfully but with an error or unsuccessfully. 
+
+Furthermore, we see that the accessibility status of websites shifts over time. The primary reason for this is a significant increase in restricted content over time – for hard news websites, restricted content makes up just 0.7% of total requests in the first snapshot but makes up 2.9% in the third snapshot. 
+
+These results have implications for misinformation research. Considering that misinformation is relatively rare [@dahlke2022mixed; @guess2020exposure; @moore2022exposure], each piece of misinformation exposure is important. Misinformation researchers should work to document the content of misinformation as quickly as possible after its creation or exposure in order to preserve and study its contents. In particular, researchers should consider that some types of misinformation may be systematically more difficult to capture and either make special efforts to collect that content or consider the implications of potentially missing it. 
+The present research, however, has much broader implications for any researcher conducting web scraping. Based on these results, we have suggestions for how researchers should capture web scraping data and how to report such data in a manuscript. 
+
+First, we recommend leveraging a browser-based crawling infrastructure when collecting web data from URL traces. This infrastructure is so that URL content captured can more closely mirror the end user's behavior when they visit the page (e.g., through a web browser).
+
+Second, we have identified key metrics that quantify potential errors associated with a web page’s accessibility status. We encourage future research using scraped web data to report the percentage of web pages that fall into each category: successful and unrestricted content, successful and restricted content, restricted and an error returned, or unsuccessful. After calculating these rates, they should be reported consistently through a table, as modeled in Table 3, where there are at least two categories of websites (Type A, Type B, Type C, etc.). This sort of test has the flexibility to handle granular levels of data, even down to the web-domain level. For data with nested subgroups, we recommend a table such as Table 2. Crucially, we recommend a chi-squared test of the distributions to determine if the content distribution significantly differs across subgroups. If the distributions are significantly different, that suggests a systematic bias in one’s data.
+ 
+
+\begin{center}
+```{r}
+tribble(~"URL Category", ~"Successful - Unrestricted", ~"Successful - Restricted", ~"Successful - Error", ~"Unsccessful",
+        "Type A", "__%", "__%", "__%", "__%",
+        "Type B", "__%", "__%", "__%", "__%") %>% 
+  kableExtra::kbl(format = "latex",
+               booktabs = T,
+               caption = "PIE Table Template") %>% 
+                 kableExtra::footnote(general = "$\\\\chi^2$(\\\\_\\\\_) = \\\\_\\\\_, $p$ = \\\\_\\\\_",
+                       escape = F, threeparttable = T)
+```
+\end{center}
+
+Third, when the chi-squared test is significant–and thus the data show systematic bias–we recommend that authors should do three things: 1) authors should consider whether this bias compromises their results or requires other methods to overcome the bias (e.g., recover inaccessible sites via an online archive), 2) conduct an error analysis to examine why some categories’ metrics are different, and 3) note in the limitations of the study that there is potential bias that could influence inferences from the analysis. We note that there is no perfect sampling of websites, in the same way that sampling of human participants in studies is never perfectly representative of the underlying population. Therefore, just as sampling metrics are always reported in human participant studies, we argue here that the metrics should always be reported for web scraping studies to give readers an understanding of the potential biases in a study’s data. Hopefully, future meta-analytic work can use these standardized metrics to gain a more holistic understanding of the distribution of the metrics across the internet and websites of interest to scholars.
+
+
+# Conclusion
+
+We examine the accessibility and unusability of web scraping data from web browsing logs of all hard news and misinformation websites that 1,238 individuals visited across 107k visits to hard news and misinformation websites. We find significant amounts of systematic bias in the scraped data. Misinformation web pages, particularly conservative ones, are more likely to be inaccessible. Hard news web pages, specifically liberal hard news web pages, are more likely to be accessible to restricted or returned an error. We suggest that future researchers should take care to consider and report the systematic biases in their own data by reporting on the accessibility statuses of their URLs in a standard way that makes clear the potential biases in one’s data and allows for easy interpretation across studies.
+
+
+\newpage
+
+\renewcommand{\appendixname}{Supplementary Material}
+\renewcommand{\thefigure}{S\arabic{figure}} \setcounter{figure}{0}
+\renewcommand{\thetable}{S\arabic{table}} \setcounter{table}{0}
+\renewcommand{\theequation}{S\arabic{table}} \setcounter{equation}{0}
+
+# Supplemental Materials
+
+## A. Restricted Content Classifier
+
+Often when conducting a web crawl, a web page is successfully returned but does not contain the content that one desires to study. For example, the content that may be returned is a paywall or some other sort of error message. To identify such URLs, we hand-coded returned content and trained a machine learning classifier that we applied to the remaining successfully returned URLs. 
+
+First, we trained two independent coders to identify “restricted” (i.e., content that is behind a paywall/ login or some other type of error). We instructed the coders to look for returned content that mentions a paywall, needing to pay to access content, a login page, or other messages that indicate an error or that the page was unavailable (e.g., “This page is not available right now”). The two coders achieved adequate intercoder reliability (Cohen’s Kappa = .85). 
+
+After achieving adequate agreement, the coders hand-coded a random subset of 9,636 web pages. Of these web pages 11.6% were categorized as having restricted content, 88.4% were categorized as not having restricted content. 
+
+To train the classifier, we used 7,724 web page contents for the training set, 1,405 for the test set, and 507 for the validation set. The model achieved high accuracy with an F1 score of 0.92 on the validation set.
+
+The data to train this classifier is available at osf.io/7beuv/. 
+
+\newpage
+
+## B. Alternative statistical tests
+
+As a robustness check, we examined whether the distribution of hard news and misinformation web pages remained significantly skewed when operating under different categorical groupings. We find that the distributions remain statistically significantly different when categorizing crawls into either successful or unsuccessful (Table S1), as well as successful and unrestricted content and other (i.e., successful but restricted, successful but error, and unsuccessful; Table S2). 
+
+```{r include = F}
+url_categories_snapshot_all %>%
+  filter(snapshot == 1) %>% 
+  count(url_type, bucket, name = "x") %>% 
+  xtabs(x~url_type+bucket, data = .) %>% 
+  chisq.test() 
+```
+
+\begin{center}
+```{r}
+url_categories_snapshot_all %>%
+  filter(snapshot == 1) %>% 
+  count(url_type, bucket, name = "x") %>% 
+  group_by(url_type) %>% 
+  mutate(n = sum(x),
+         per = scales::percent(x / n, .1)) %>% 
+  select(-x, -n) %>% 
+  pivot_wider(names_from = bucket, values_from = per) %>% 
+  mutate(url_type = if_else(url_type == "hard_news", "hard news", url_type),
+         url_type = if_else(url_type == "misinfo", "misinformation", url_type)) %>% 
+  select(url_type, `successful`, `unsuccessful`) %>% 
+  kableExtra::kbl(col.names = c("URL Category", "Successful", "Unsuccessful"),
+               format = "latex", 
+               booktabs = T,
+               caption = "Percentage of Hard News and Misinformation URLs that are in each Category") %>% 
+  kableExtra::kable_styling(latex_options = "HOLD_position") %>% 
+  kableExtra::footnote(general = "$\\\\chi^2$(3) = 184.9, $p$ < .001", escape = F, threeparttable = T) 
+```
+\end{center}
+
+
+```{r include = F}
+url_categories_snapshot_all %>%
+  filter(snapshot == 1) %>% 
+  mutate(usable = ifelse(sub_bucket == "unrestricted" & bucket != "unsuccessful", 1, 0)) %>% 
+  count(url_type, usable, name = "x") %>% 
+  xtabs(x~url_type+usable, data = .) %>% 
+  chisq.test() 
+```
+
+\begin{center}
+```{r}
+url_categories_snapshot_all %>%
+  filter(snapshot == 1) %>% 
+  mutate(usable = ifelse(sub_bucket == "unrestricted" & bucket != "unsuccessful", 1, 0)) %>% 
+  count(url_type, usable, name = "x") %>% 
+  group_by(url_type) %>% 
+  mutate(n = sum(x),
+         per = scales::percent(x / n, .1)) %>% 
+  select(-x, -n) %>% 
+  pivot_wider(names_from = usable, values_from = per) %>% 
+  mutate(url_type = if_else(url_type == "hard_news", "hard news", url_type),
+         url_type = if_else(url_type == "misinfo", "misinformation", url_type)) %>% 
+  select(url_type, `1`, `0`) %>% 
+  kableExtra::kbl(col.names = c("URL Category", "Successful - Unrestricted", "Other"),
+               format = "latex", 
+               booktabs = T,
+               caption = "Percentage of Hard News and Misinformation URLs that are in each Category") %>%   kableExtra::kable_styling(latex_options = "HOLD_position") %>% 
+  kableExtra::footnote(general = "$\\\\chi^2$(3) = 134.8, $p$ < .001", escape = F, threeparttable = T) 
+```
+\end{center}
+
+\newpage
+
+## C. Over-time results
+
+We calculate the categorizations in the second (Table S3) and third (Table S4) snapshots to add more detail to our over-time analysis. In addition, we find that the distributions remain statistically significant across all three snapshots. 
+
+Also, we calculate the rates at which hard news and misinformation websites are in each of the categories across the three snapshots. (Table S5)
+
+
+```{r include = F}
+url_categories_snapshot_all %>%
+  filter(snapshot == 2) %>% 
+  count(url_type, eph_type, name = "x") %>% 
+  xtabs(x~url_type+eph_type, data = .) %>% 
+  chisq.test() 
+```
+
+\begin{center}
+```{r}
+url_categories_snapshot_all %>%
+  filter(snapshot == 2) %>% 
+  count(url_type, eph_type, name = "x") %>% 
+  group_by(url_type) %>% 
+  mutate(n = sum(x),
+         per = scales::percent(x / n)) %>% 
+  select(-x, -n) %>% 
+  pivot_wider(names_from = eph_type, values_from = per) %>% 
+  mutate(url_type = if_else(url_type == "hard_news", "hard news", url_type),
+         url_type = if_else(url_type == "misinfo", "misinformation", url_type)) %>% 
+  select(url_type, `successful - unrestricted`, `successful - restricted`, `successful - error`, `unsuccessful`) %>% 
+  kableExtra::kbl(col.names = c("URL Category", "Successful - Unrestricted", "Successful - Restricted", "Successful - Error", "Unsccessful"),
+               format = "latex", 
+               booktabs = T,
+               caption = "Percentage of Hard News and Misinformation URLs that are in each Category in Snapshot 2") %>%   kableExtra::kable_styling(latex_options = "HOLD_position") %>% 
+  kableExtra::footnote(general = "$\\\\chi^2$(3) = 446.7, $p$ < .001", escape = F, threeparttable = T) 
+```
+\end{center}
+
+```{r include = F}
+url_categories_snapshot_all %>%
+  filter(snapshot == 3) %>% 
+  count(url_type, eph_type, name = "x") %>% 
+  xtabs(x~url_type+eph_type, data = .) %>% 
+  chisq.test() 
+```
+
+\begin{center}
+```{r}
+url_categories_snapshot_all %>%
+  filter(snapshot == 3) %>% 
+  count(url_type, eph_type, name = "x") %>% 
+  group_by(url_type) %>% 
+  mutate(n = sum(x),
+         per = scales::percent(x / n, .1)) %>% 
+  select(-x, -n) %>% 
+  pivot_wider(names_from = eph_type, values_from = per) %>% 
+  mutate(url_type = if_else(url_type == "hard_news", "hard news", url_type),
+         url_type = if_else(url_type == "misinfo", "misinformation", url_type)) %>% 
+  select(url_type, `successful - unrestricted`, `successful - restricted`, `successful - error`, `unsuccessful`) %>% 
+  kableExtra::kbl(col.names = c("URL Category", "Successful - Unrestricted", "Successful - Restricted", "Successful - Error", "Unsccessful"),
+               format = "latex", 
+               booktabs = T,
+               caption = "Percentage of Hard News and Misinformation URLs that are in each Category in Snapshot 3") %>%   kableExtra::kable_styling(latex_options = "HOLD_position") %>% 
+  kableExtra::footnote(general = "$\\\\chi^2$(3) = 572.7, $p$ < .001", escape = F, threeparttable = T) 
+```
+
+\end{center}
+
+\newpage
+
+\begin{center}
+```{r}
+url_categories_snapshot_all %>% 
+  select(url, snapshot, url_type, eph_type) %>% 
+  pivot_wider(names_from = snapshot, values_from = eph_type) %>% 
+  filter(!is.na(`1`) & !is.na(`2`) & !is.na(`3`)) %>% 
+  count(url_type, `1`, `2`, `3`, sort = T) %>% 
+  group_by(url_type) %>% 
+  mutate(per = scales::percent(n / sum(n), .01)) %>% 
+  select(-n) %>% 
+  pivot_wider(names_from = url_type,
+              values_from = per) %>% 
+  mutate(hard_news = replace_na(hard_news, "0.00%"),
+         misinfo = replace_na(misinfo, "0.00%")) %>% 
+  kableExtra::kbl(col.names = c("Snapshot 1", "Snapshot 2", "Shapshot 3", "Hard News %", "Misinformation %"),
+               format = "latex", 
+               booktabs = T,
+               caption = "Rates that hard news and misinformation websites are in each category across the three snapshots") %>%   kableExtra::kable_styling(latex_options = c("hold_position", "scale_down"))
+```
+
+\end{center}
+
+\newpage
+
+# References
